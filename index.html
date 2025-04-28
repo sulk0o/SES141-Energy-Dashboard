@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Renewable Energy Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        :root {
+            --primary: #2a9d8f;
+            --secondary: #e9c46a;
+            --dark: #264653;
+            --light: #f1faee;
+            --danger: #e76f51;
+            --success: #52b788;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #f5f7fa;
+            color: var(--dark);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background-color: var(--primary);
+            color: white;
+            padding: 20px 0;
+            box-shadow: var(--shadow);
+            margin-bottom: 30px;
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 5px;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: var(--shadow);
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .card h2 {
+            color: var(--primary);
+            margin-bottom: 15px;
+            border-bottom: 2px solid var(--secondary);
+            padding-bottom: 8px;
+            font-size: 1.5rem;
+        }
+
+        .full-width {
+            grid-column: 1 / -1;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-top: 15px;
+        }
+
+        .info-box {
+            margin-top: 15px;
+            background-color: rgba(233, 196, 106, 0.2);
+            border-left: 4px solid var(--secondary);
+            padding: 10px;
+            border-radius: 0 4px 4px 0;
+        }
+
+        .data-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 15px 0;
+        }
+
+        button, select {
+            padding: 8px 15px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover, select:hover {
+            background-color: #238176;
+        }
+
+        select {
+            background-color: white;
+            color: var(--dark);
+            border: 1px solid var(--primary);
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        .comparison-table th, .comparison-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .comparison-table th {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        .comparison-table tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+
+        .slider-container {
+            margin: 15px 0;
+        }
+
+        .slider-container label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        input[type="range"] {
+            width: 100%;
+        }
+
+        .calculation-box {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: rgba(42, 157, 143, 0.1);
+            border-radius: 8px;
+        }
+
+        .energy-icon {
+            width: 40px;
+            height: 40px;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+
+        .methodology {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+        }
+
+        .methodology h2 {
+            color: var(--primary);
+            margin-bottom: 15px;
+            border-bottom: 2px solid var(--secondary);
+            padding-bottom: 8px;
+        }
+
+        .methodology ol, .methodology ul {
+            margin-left: 30px;
+            padding-left: 20px;
+        }
+        
+        .methodology li {
+            margin-bottom: 10px;
+        }
+
+        footer {
+            margin-top: 30px;
+            padding: 20px 0;
+            background-color: var(--dark);
+            color: white;
+            text-align: center;
+        }
+
+        .tooltip {
+            position: relative;
+            display: inline-block;
+            border-bottom: 1px dotted black;
+            cursor: help;
+        }
+
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 250px;
+            background-color: var(--dark);
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 10px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -125px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container header-content">
+            <div>
+                <h1>Renewable Energy Dashboard</h1>
+                <p>Comparing Energy Generation Methods and Their Impact</p>
+            </div>
+            <div>
+                <select id="region-selector" onchange="updateCharts()">
+                    <option value="global">Global</option>
+                    <option value="us">United States</option>
+                    <option value="eu">European Union</option>
+                    <option value="china">China</option>
+                    <option value="india">India</option>
+                </select>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="dashboard-grid">
+            <div class="card">
+                <h2>Energy Production by Source</h2>
+                <p>Comparing renewable vs non-renewable energy sources and their production capacity.</p>
+                <div class="chart-container">
+                    <canvas id="energyProductionChart"></canvas>
+                </div>
+                <div class="info-box">
+                    <p>Renewable energy sources are projected to continue growing at an accelerated rate as technology improves and costs decrease.</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Carbon Emissions Comparison</h2>
+                <p>Carbon footprint of different energy generation methods (gCO2eq/kWh)</p>
+                <div class="chart-container">
+                    <canvas id="carbonEmissionsChart"></canvas>
+                </div>
+                <div class="info-box">
+                    <p>The carbon intensity of energy production varies dramatically between sources, with significant implications for climate impact.</p>
+                </div>
+            </div>
+
+            <div class="card full-width">
+                <h2>Energy Efficiency & Cost Analysis</h2>
+                <div class="data-controls">
+                    <button onclick="switchToEfficiency()">View Efficiency</button>
+                    <button onclick="switchToCost()">View Cost</button>
+                </div>
+                <div class="chart-container">
+                    <canvas id="efficiencyCostChart"></canvas>
+                </div>
+                <div class="calculation-box">
+                    <h3>Quantitative Energy Estimation</h3>
+                    <p>Assuming a typical household uses <span id="householdUsage">10,000</span> kWh of electricity annually:</p>
+                    <div class="slider-container">
+                        <label for="usage-slider">Annual Household Electricity Usage (kWh): <span id="usage-value">10,000</span></label>
+                        <input type="range" id="usage-slider" min="5000" max="20000" step="1000" value="10000" onchange="updateUsageCalculations()">
+                    </div>
+                    <p>Solar panels required: <span id="solar-calculation">25</span> standard panels (400W each)</p>
+                    <p>Natural gas equivalent: <span id="gas-calculation">943</span> cubic meters</p>
+                    <p>Coal equivalent: <span id="coal-calculation">4.1</span> metric tons</p>
+                    <p>Annual CO2 emissions saved by using solar instead of coal: <span id="emissions-saved">8.2</span> metric tons</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Renewable Energy Growth</h2>
+                <p>Annual growth rates of different renewable energy technologies</p>
+                <div class="chart-container">
+                    <canvas id="growthRateChart"></canvas>
+                </div>
+                <div class="info-box">
+                    <p>Solar PV has shown the highest growth rate, followed by wind power, while hydroelectric growth has been more modest due to geographical limitations.</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Energy Source Comparison</h2>
+                <table class="comparison-table">
+                    <thead>
+                        <tr>
+                            <th>Energy Source</th>
+                            <th>Energy Density (MJ/kg)</th>
+                            <th>Availability</th>
+                            <th>Scalability</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Solar PV</td>
+                            <td>N/A (Renewable)</td>
+                            <td>Intermittent</td>
+                            <td>High</td>
+                        </tr>
+                        <tr>
+                            <td>Wind</td>
+                            <td>N/A (Renewable)</td>
+                            <td>Intermittent</td>
+                            <td>High</td>
+                        </tr>
+                        <tr>
+                            <td>Hydroelectric</td>
+                            <td>N/A (Renewable)</td>
+                            <td>Stable (weather dependent)</td>
+                            <td>Limited by geography</td>
+                        </tr>
+                        <tr>
+                            <td>Natural Gas</td>
+                            <td>53.6</td>
+                            <td>On-demand</td>
+                            <td>High</td>
+                        </tr>
+                        <tr>
+                            <td>Coal</td>
+                            <td>24-35</td>
+                            <td>On-demand</td>
+                            <td>High</td>
+                        </tr>
+                        <tr>
+                            <td>Nuclear</td>
+                            <td>80,620,000</td>
+                            <td>Continuous</td>
+                            <td>Medium (high capital cost)</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="info-box">
+                    <p>Energy density represents the amount of energy stored in a given mass of fuel. Note that for renewables like solar and wind, the concept of energy density applies differently as they harness continuous environmental flows.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="methodology">
+            <h2>Methodology & Learning Objectives</h2>
+            <ol>
+                <li><strong>Quantitative Estimation (Objective B):</strong> The dashboard provides numerical estimates of energy production, carbon emissions, and efficiency metrics.</li>
+                <li><strong>Critical Comparison of Energy Generation (Objective D):</strong> Compares energy sources based on production, emissions, cost, and efficiency.</li>
+            </ol>
+            <p>Data sources include:</p>
+            <ul>
+                <li>International Energy Agency (IEA) - Global energy statistics</li>
+                <li>US Energy Information Administration (EIA) - US energy data</li>
+                <li>Intergovernmental Panel on Climate Change (IPCC) - Carbon emission factors</li>
+                <li>National Renewable Energy Laboratory (NREL) - Renewable energy costs and efficiency data</li>
+            </ul>
+            <p>Calculations for household energy equivalents use standard conversion factors:</p>
+            <ul>
+                <li>Solar panel production: Average 1,460 kWh/year per 1kW of installed capacity (location dependent)</li>
+                <li>Natural gas: 10.6 kWh/m³</li>
+                <li>Coal: 2,460 kWh/ton</li>
+                <li>CO2 emissions: 2.0 kg CO2/kWh for coal vs. 0.05 kg CO2/kWh for solar (lifecycle)</li>
+            </ul>
+        </div>
+    </div>
+
+    <footer>
+        <div class="container">
+            <p>Created for SES 141 - 2025</p>
+            <p>Based on compiled energy statistics from major international agencies</p>
+            <p>Created by Jim Brophy</p>
+        </div>
+    </footer>
+
+    <script>
+        // Chart configuration and data
+        let charts = {};
+        let currentView = 'efficiency';
+        let selectedRegion = 'global';
+
+        // Data objects for different regions
+        const regionData = {
+            global: {
+                production: {
+                    labels: ['Solar', 'Wind', 'Hydro', 'Nuclear', 'Natural Gas', 'Coal', 'Oil'],
+                    datasets: [{
+                        label: 'Energy Production (TWh/year)',
+                        data: [720, 1430, 4300, 2800, 6100, 8900, 4400],
+                        backgroundColor: [
+                            '#f9c74f', // Solar
+                            '#90be6d', // Wind
+                            '#43aa8b', // Hydro
+                            '#577590', // Nuclear
+                            '#f8961e', // Natural Gas
+                            '#f3722c', // Coal
+                            '#f94144'  // Oil
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                carbon: {
+                    labels: ['Solar PV', 'Wind', 'Hydro', 'Nuclear', 'Natural Gas', 'Coal', 'Oil'],
+                    datasets: [{
+                        label: 'Carbon Emissions (gCO2eq/kWh)',
+                        data: [41, 11, 24, 12, 490, 820, 650],
+                        backgroundColor: [
+                            '#f9c74f', // Solar
+                            '#90be6d', // Wind
+                            '#43aa8b', // Hydro
+                            '#577590', // Nuclear
+                            '#f8961e', // Natural Gas
+                            '#f3722c', // Coal
+                            '#f94144'  // Oil
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                efficiency: {
+                    labels: ['Solar PV', 'Wind', 'Hydro', 'Nuclear', 'Natural Gas', 'Coal'],
+                    datasets: [{
+                        label: 'Average Efficiency (%)',
+                        data: [20, 45, 90, 33, 60, 37],
+                        backgroundColor: '#2a9d8f',
+                        borderColor: '#264653',
+                        borderWidth: 1
+                    }]
+                },
+                cost: {
+                    labels: ['Solar PV', 'Wind', 'Hydro', 'Nuclear', 'Natural Gas', 'Coal'],
+                    datasets: [{
+                        label: 'Levelized Cost ($/MWh)',
+                        data: [37, 40, 65, 163, 56, 108],
+                        backgroundColor: '#e9c46a',
+                        borderColor: '#264653',
+                        borderWidth: 1
+                    }]
+                },
+                growth: {
+                    labels: ['2020', '2021', '2022', '2023', '2024'],
+                    datasets: [
+                        {
+                            label: 'Solar PV',
+                            data: [22, 23, 25, 28, 31],
+                            borderColor: '#f9c74f',
+                            backgroundColor: 'rgba(249, 199, 79, 0.2)',
+                            tension: 0.1,
+                            fill: true
+                        },
+                        {
+                            label: 'Wind',
+                            data: [14, 15, 16, 17, 19],
+                            borderColor: '#90be6d',
+                            backgroundColor: 'rgba(144, 190, 109, 0.2)',
+                            tension: 0.1,
+                            fill: true
+                        },
+                        {
+                            label: 'Hydro',
+                            data: [3, 3, 3.5, 4, 4.5],
+                            borderColor: '#43aa8b',
+                            backgroundColor: 'rgba(67, 170, 139, 0.2)',
+                            tension: 0.1,
+                            fill: true
+                        }
+                    ]
+                }
+            },
+            us: {
+                production: {
+                    labels: ['Solar', 'Wind', 'Hydro', 'Nuclear', 'Natural Gas', 'Coal', 'Oil'],
+                    datasets: [{
+                        label: 'Energy Production (TWh/year)',
+                        data: [155, 380, 260, 790, 1580, 770, 180],
+                        backgroundColor: [
+                            '#f9c74f', '#90be6d', '#43aa8b', '#577590', '#f8961e', '#f3722c', '#f94144'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                carbon: {
+                    labels: ['Solar PV', 'Wind', 'Hydro', 'Nuclear', 'Natural Gas', 'Coal', 'Oil'],
+                    datasets: [{
+                        label: 'Carbon Emissions (gCO2eq/kWh)',
+                        data: [40, 11, 24, 12, 490, 820, 650],
+                        backgroundColor: [
+                            '#f9c74f', '#90be6d', '#43aa8b', '#577590', '#f8961e', '#f3722c', '#f94144'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                efficiency: {
+                    labels: ['Solar PV', 'Wind', 'Hydro', 'Nuclear', 'Natural Gas', 'Coal'],
+                    datasets: [{
+                        label: 'Average Efficiency (%)',
+                        data: [22, 45, 90, 33, 61, 37],
+                        backgroundColor: '#2a9d8f',
+                        borderColor: '#264653',
+                        borderWidth: 1
+                    }]
+                },
+                cost: {
+                    labels: ['Solar PV', 'Wind', 'Hydro', 'Nuclear', 'Natural Gas', 'Coal'],
+                    datasets: [{
+                        label: 'Levelized Cost ($/MWh)',
+                        data: [32, 38, 68, 167, 42, 112],
+                        backgroundColor: '#e9c46a',
+                        borderColor: '#264653',
+                        borderWidth: 1
+                    }]
+                },
+                growth: {
+                    labels: ['2020', '2021', '2022', '2023', '2024'],
+                    datasets: [
+                        {
+                            label: 'Solar PV',
+                            data: [25, 28, 32, 36, 42],
+                            borderColor: '#f9c74f',
+                            backgroundColor: 'rgba(249, 199, 79, 0.2)',
+                            tension: 0.1,
+                            fill: true
+                        },
+                        {
+                            label: 'Wind',
+                            data: [12, 14, 16, 18, 20],
+                            borderColor: '#90be6d',
+                            backgroundColor: 'rgba(144, 190, 109, 0.2)',
+                            tension: 0.1,
+                            fill: true
+                        },
+                        {
+                            label: 'Hydro',
+                            data: [2, 2, 2.5, 2.8, 3],
+                            borderColor: '#43aa8b',
+                            backgroundColor: 'rgba(67, 170, 139, 0.2)',
+                            tension: 0.1,
+                            fill: true
+                        }
+                    ]
+                }
+            },
+            eu: {
+                production: {
+                    labels: ['Solar', 'Wind', 'Hydro', 'Nuclear', 'Natural Gas', 'Coal', 'Oil'],
+                    datasets: [{
+                        label: 'Energy Production (TWh/year)',
+                        data: [190, 420, 350, 650, 730, 470, 120],
+                        backgroundColor: [
+                            '#f9c74f', '#90be6d', '#43aa8b', '#577590', '#f8961e', '#f3722c', '#f94144'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                carbon: {
+                    labels: ['Solar PV', 'Wind', 'Hydro', 'Nuclear', 'Natural Gas', 'Coal', 'Oil'],
+                    datasets: [{
+                        label: 'Carbon Emissions (gCO2eq/kWh)',
+                        data: [38, 10, 22, 11, 485, 815, 645],
+                        backgroundColor: [
+                            '#f9c74f', '#90be6d', '#43aa8b', '#577590', '#f8961e', '#f3722c', '#f94144'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                efficiency: {
+                    labels: ['Solar PV', 'Wind', 'Hydro', 'Nuclear', 'Natural Gas', 'Coal'],
+                    datasets: [{
+                        label: 'Average Efficiency (%)',
+                        data: [21, 44, 90, 33, 59, 36],
+                        backgroundColor: '#2a9d8f',
+                        borderColor: '#264653',
+                        borderWidth: 1
+                    }]
+                },
+                cost: {
+                    labels: ['Solar PV', 'Wind', 'Hydro', 'Nuclear', 'Natural Gas', 'Coal'],
+                    datasets: [{
+                        label: 'Levelized Cost ($/MWh)',
+                        data: [35, 37, 65, 170, 85, 130],
+                        backgroundColor: '#e9c46a',
+                        borderColor: '#264653',
+                        borderWidth: 1
+                    }]
+                },
+                growth: {
+                    labels: ['2020', '2021', '2022', '2023', '2024'],
+                    datasets: [
+                        {
+                            label: 'Solar PV',
+                            data: [18, 22, 28, 34, 40],
+                            borderColor: '#f9c74f',
+                            backgroundColor: 'rgba(249, 199, 79, 0.2)',
+                            tension: 0.1,
+                            fill: true
+                        },
+                        {
+                            label: 'Wind',
+                            data: [16, 18, 21, 24, 27],
+                            borderColor: '#90be6d',
+                            backgroundColor: 'rgba(144, 190, 109, 0.2)',
+                            tension: 0.1,
+                            fill: true
+                        },
+                        {
+                            label: 'Hydro',
+                            data: [1.5, 1.8, 2, 2.5, 3],
+                            borderColor: '#43aa8b',
+                            backgroundColor: 'rgba(67, 170, 139, 0.2)',
+                            tension: 0.1,
+                            fill: true
+                        }
+                    ]
+                }
+            },
+            china: {
+                production: {
+                    labels: ['Solar', 'Wind', 'Hydro', 'Nuclear', 'Natural Gas', 'Coal', 'Oil'],
+                    datasets: [{
+                        label: 'Energy Production (TWh/year)',
+                        data: [290, 420, 1300, 350, 370, 5200, 180],
+                        backgroundColor: [
+                            '#f9c74f', '#90be6d', '#43aa8b', '#577590', '#f8961e', '#f3722c', '#f94144'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                carbon: {
+                    labels: ['Solar PV', 'Wind', 'Hydro', 'Nuclear', 'Natural Gas', 'Coal', 'Oil'],
+                    datasets: [{
+                        label: 'Carbon Emissions (gCO2eq/kWh)',
+                        data: [45, 12, 25, 13, 500, 850, 670],
+                        backgroundColor: [
+                            '#f9c74f', '#90be6d', '#43aa8b', '#577590', '#f8961e', '#f3722c', '#f94144'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                efficiency: {
+                    labels: ['Solar PV', 'Wind', 'Hydro', 'Nuclear', 'Natural Gas', 'Coal'],
+                    datasets: [{
+                        label: 'Average Efficiency (%)',
+                        data: [18, 42, 88, 32, 55, 35],
+                        backgroundColor: '#2a9d8f',
+                        borderColor: '#264653',
+                        borderWidth: 1
+                    }]
+                },
+                cost: {
+                    labels: ['Solar PV', 'Wind', 'Hydro', 'Nuclear', 'Natural Gas', 'Coal'],
+                    datasets: [{
+                        label: 'Levelized Cost ($/MWh)',
+                        data: [25, 32, 50, 120, 95, 60],
+                        backgroundColor: '#e9c46a',
+                        borderColor: '#264653',
+                        borderWidth: 1
+                    }]
+                },
+                growth: {
+                    labels: ['2020', '2021', '2022', '2023', '2024'],
+                    datasets: [
+                        {
+                            label: 'Solar PV',
+                            data: [30, 38, 45, 52, 60],
+                            borderColor: '#f9c74f',
+                            backgroundColor: 'rgba(249, 199, 79, 0.2)',
+                            tension: 0.1,
+                            fill: true
+                        },
+                        {
+                            label: 'Wind',
+                            data: [22, 28, 35, 42, 48],
+                            borderColor: '#90be6d',
+                            backgroundColor: 'rgba(144, 190, 109, 0.2)',
+                            tension: 0.1,
+                            fill: true
+                        },
+                        {
+                            label: 'Hydro',
+                            data: [5, 6, 7, 8, 9],
+                            borderColor: '#43aa8b',
+                            backgroundColor: 'rgba(67, 170, 139, 0.2)',
+                            tension: 0.1,
+                            fill: true
+                        }
+                    ]
+                }
+            },
+            india: {
+                production: {
+                    labels: ['Solar', 'Wind', 'Hydro', 'Nuclear', 'Natural Gas', 'Coal', 'Oil'],
+                    datasets: [{
+                        label: 'Energy Production (TWh/year)',
+                        data: [85, 68, 170, 40, 60, 1100, 40],
+                        backgroundColor: [
+                            '#f9c74f', '#90be6d', '#43aa8b', '#577590', '#f8961e', '#f3722c', '#f94144'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                carbon: {
+                    labels: ['Solar PV', 'Wind', 'Hydro', 'Nuclear', 'Natural Gas', 'Coal', 'Oil'],
+                    datasets: [{
+                        label: 'Carbon Emissions (gCO2eq/kWh)',
+                        data: [50, 13, 26, 13, 510, 860, 680],
+                        backgroundColor: [
+                            '#f9c74f', '#90be6d', '#43aa8b', '#577590', '#f8961e', '#f3722c', '#f94144'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                efficiency: {
+                    labels: ['Solar PV', 'Wind', 'Hydro', 'Nuclear', 'Natural Gas', 'Coal'],
+                    datasets: [{
+                        label: 'Average Efficiency (%)',
+                        data: [17, 40, 85, 31, 53, 32],
+                        backgroundColor: '#2a9d8f',
+                        borderColor: '#264653',
+                        borderWidth: 1
+                    }]
+                },
+                cost: {
+                    labels: ['Solar PV', 'Wind', 'Hydro', 'Nuclear', 'Natural Gas', 'Coal'],
+                    datasets: [{
+                        label: 'Levelized Cost ($/MWh)',
+                        data: [22, 30, 48, 115, 90, 55],
+                        backgroundColor: '#e9c46a',
+                        borderColor: '#264653',
+                        borderWidth: 1
+                    }]
+                },
+                growth: {
+                    labels: ['2020', '2021', '2022', '2023', '2024'],
+                    datasets: [
+                        {
+                            label: 'Solar PV',
+                            data: [35, 45, 55, 65, 75],
+                            borderColor: '#f9c74f',
+                            backgroundColor: 'rgba(249, 199, 79, 0.2)',
+                            tension: 0.1,
+                            fill: true
+                        },
+                        {
+                            label: 'Wind',
+                            data: [15, 20, 25, 30, 35],
+                            borderColor: '#90be6d',
+                            backgroundColor: 'rgba(144, 190, 109, 0.2)',
+                            tension: 0.1,
+                            fill: true
+                        },
+                        {
+                            label: 'Hydro',
+                            data: [4, 5, 6, 7, 8],
+                            borderColor: '#43aa8b',
+                            backgroundColor: 'rgba(67, 170, 139, 0.2)',
+                            tension: 0.1,
+                            fill: true
+                        }
+                    ]
+                }
+            }
+        };
+
+        function initCharts() {
+            // Energy Production Chart
+            const productionCtx = document.getElementById('energyProductionChart').getContext('2d');
+            charts.production = new Chart(productionCtx, {
+                type: 'bar',
+                data: regionData[selectedRegion].production,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.dataset.label}: ${context.raw} TWh/year`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Carbon Emissions Chart
+            const carbonCtx = document.getElementById('carbonEmissionsChart').getContext('2d');
+            charts.carbon = new Chart(carbonCtx, {
+                type: 'bar',
+                data: regionData[selectedRegion].carbon,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.dataset.label}: ${context.raw} gCO2eq/kWh`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Efficiency/Cost Chart
+            const efficiencyCostCtx = document.getElementById('efficiencyCostChart').getContext('2d');
+            charts.efficiencyCost = new Chart(efficiencyCostCtx, {
+                type: 'bar',
+                data: regionData[selectedRegion].efficiency,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true
+                        }
+                    }
+                }
+            });
+
+            // Growth Rate Chart
+            const growthCtx = document.getElementById('growthRateChart').getContext('2d');
+            charts.growth = new Chart(growthCtx, {
+                type: 'line',
+                data: regionData[selectedRegion].growth,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.dataset.label}: ${context.raw}% annual growth`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Annual Growth Rate (%)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateCharts() {
+            selectedRegion = document.getElementById('region-selector').value;
+            
+            // Update Production Chart
+            charts.production.data = regionData[selectedRegion].production;
+            charts.production.update();
+            
+            // Update Carbon Chart
+            charts.carbon.data = regionData[selectedRegion].carbon;
+            charts.carbon.update();
+            
+            // Update Efficiency/Cost Chart based on current view
+            if (currentView === 'efficiency') {
+                charts.efficiencyCost.data = regionData[selectedRegion].efficiency;
+            } else {
+                charts.efficiencyCost.data = regionData[selectedRegion].cost;
+            }
+            charts.efficiencyCost.update();
+            
+            // Update Growth Chart
+            charts.growth.data = regionData[selectedRegion].growth;
+            charts.growth.update();
+            
+            // Update calculations
+            updateUsageCalculations();
+        }
+
+        function switchToEfficiency() {
+            currentView = 'efficiency';
+            charts.efficiencyCost.data = regionData[selectedRegion].efficiency;
+            charts.efficiencyCost.options.scales.y.title = {
+                display: true,
+                text: 'Efficiency (%)'
+            };
+            charts.efficiencyCost.update();
+        }
+
+        function switchToCost() {
+            currentView = 'cost';
+            charts.efficiencyCost.data = regionData[selectedRegion].cost;
+            charts.efficiencyCost.options.scales.y.title = {
+                display: true,
+                text: 'Levelized Cost ($/MWh)'
+            };
+            charts.efficiencyCost.update();
+        }
+
+        function updateUsageCalculations() {
+            const usageSlider = document.getElementById('usage-slider');
+            const usageValue = parseInt(usageSlider.value);
+            
+            document.getElementById('usage-value').textContent = usageValue.toLocaleString();
+            document.getElementById('householdUsage').textContent = usageValue.toLocaleString();
+            
+            // Calculate solar panels needed (400W panels with average 4 hours peak sun per day)
+            const solarPanels = Math.round(usageValue / (400 * 0.4 * 365 * 4 / 1000));
+            document.getElementById('solar-calculation').textContent = solarPanels;
+            
+            // Calculate natural gas equivalent (10.6 kWh/m³)
+            const gasVolume = Math.round(usageValue / 10.6);
+            document.getElementById('gas-calculation').textContent = gasVolume;
+            
+            // Calculate coal equivalent (2,460 kWh/ton)
+            const coalWeight = (usageValue / 2460).toFixed(1);
+            document.getElementById('coal-calculation').textContent = coalWeight;
+            
+            // Calculate emissions saved (2.0 kg CO2/kWh for coal vs. 0.05 kg CO2/kWh for solar)
+            const emissionsSaved = ((2.0 - 0.05) * usageValue / 1000).toFixed(1);
+            document.getElementById('emissions-saved').textContent = emissionsSaved;
+        }
+
+        // Initialize charts when page loads
+        window.onload = function() {
+            initCharts();
+            updateUsageCalculations();
+        };
+    </script>
+</body>
+</html>
